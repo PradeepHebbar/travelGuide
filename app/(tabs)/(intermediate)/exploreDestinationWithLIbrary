@@ -1,0 +1,203 @@
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  SafeAreaView,
+  Platform,
+  Keyboard,
+  Alert,
+  Dimensions, // Keep this import
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { GooglePlacesAutocomplete, GooglePlacesAutocompleteRef } from 'react-native-google-places-autocomplete';
+import { BASE_URL } from '../../../backend/constants/config'; // Assuming Maps_API_KEY is managed elsewhere or hardcoded in query
+
+export default function ExploreDestination() {
+  const router = useRouter();
+  const [inputKey, setInputKey] = useState(Date.now().toString());
+  const placesRef = useRef<GooglePlacesAutocompleteRef>(null);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      Keyboard.dismiss();
+      setInputKey(Date.now().toString()); // Force re-mount to reset internal state
+      // DO NOT call placesRef.current?.setAddressText(""); here as it can interfere with initial focus
+      return () => {
+        Keyboard.dismiss();
+      };
+    }, [])
+  );
+
+  const handlePlaceSelect = async (data: any, details: any | null) => {
+    const placeId = details?.place_id || data?.place_id;
+    const cityName = details?.description || data?.description;
+
+    if (!placeId || !cityName) {
+        console.error("Selected place details are incomplete. Data:", data, "Details:", details);
+        Alert.alert("Error", "Could not get sufficient place details. Please try another selection.");
+        return;
+    }
+    console.log('Selected Place ID:', placeId);
+    console.log('Selected City Name:', cityName);
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/buildExploreDestinationResult`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId, cityName }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Backend Error:", errorText);
+        throw new Error(`Failed to build destination data (Status: ${response.status})`);
+      }
+      router.push({
+        pathname: '/exploreDestinationResult',
+        params: { placeId, cityName },
+      });
+    } catch (error: any) {
+      console.error("Error in handlePlaceSelect:", error.message);
+      Alert.alert('Error', error.message || 'Unable to fetch place details.');
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.replace('/(tabs)/homePage')} hitSlop={10}>
+          <MaterialIcons name="arrow-back" size={28} color="#fff" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Explore Destination</Text>
+      </View>
+
+      <View style={styles.container}>
+        <GooglePlacesAutocomplete
+          ref={placesRef}
+          key={inputKey} // Re-mounts the component when key changes
+          placeholder="Search destination"
+          fetchDetails={true}
+          onPress={handlePlaceSelect}
+          predefinedPlaces={[]} // Crucial: always provide an array
+          query={{
+            key: "AIzaSyCxQr4W8lJGvuV8tgOWK93pW93rbBI2IZI", // Your API Key
+            language: 'en',
+            types: '(cities)',
+            components: 'country:in',
+          }}
+          enablePoweredByContainer={false}
+          onFail={err => console.error("GooglePlaces API Error:", err)} // Added for better error visibility
+          onNotFound={() => console.warn("GooglePlaces: No results for that query")} // Added for feedback
+          // Keep textInputProps minimal or omit if library defaults are sufficient
+          // This is where suggestion functionality often breaks.
+          // By commenting out textInputProps or keeping it minimal (e.g., only clearButtonMode),
+          // we allow the library to use its default event handlers.
+          textInputProps={{
+            // clearButtonMode: 'while-editing', // This is usually safe
+            // If suggestions STILL don't work, you might need to explicitly provide
+            // onFocus, onBlur, and a careful onChangeText. But try without first.
+            // The errors you saw previously (onFocus of undefined, filter of undefined)
+            // are often due to the library's internal state becoming inconsistent during
+            // re-keying, especially if it expects textInputProps or predefinedPlaces
+            // to always be perfectly formed according to its internal destructuring.
+          }}
+          styles={{
+            textInputContainer: styles.textInputContainer,
+            textInput: styles.textInput,
+            listView: styles.listView,
+            row: styles.row,
+            description: styles.description,
+            predefinedPlacesDescription: styles.predefinedPlacesDescription,
+          }}
+          renderLeftButton={() => (
+            <MaterialIcons name="search" size={26} color="#6B7280" style={styles.iconStyle} />
+          )}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0B2B5B',
+  },
+  header: {
+    backgroundColor: '#0B2B5B',
+    paddingHorizontal: 15,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    marginTop: -10,
+  },
+  textInputContainer: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 30,
+    marginHorizontal: 20,
+    marginTop: 25,
+    marginBottom: 10,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    zIndex: 1001,
+  },
+  textInput: {
+    fontSize: 16,
+    flex: 1,
+    color: '#111827',
+    backgroundColor: 'transparent',
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+    paddingHorizontal: 5,
+    height: 48,
+  },
+  listView: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    borderRadius: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    position: 'absolute',
+    top: 75, // Sum of marginTop(25) + height(48) + small_buffer for textInputContainer
+    left: 0,  // To align with the container's padding correctly
+    right: 0, // To align with the container's padding correctly
+    zIndex: 1000,
+    maxHeight: Dimensions.get('window').height * 0.4,
+  },
+  row: {
+    paddingVertical: 14,
+    paddingHorizontal:10,
+    borderBottomColor: '#E5E7EB',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  description: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  predefinedPlacesDescription: {
+      color: '#1faadb',
+  },
+  iconStyle: {
+    marginRight: 12,
+  }
+});

@@ -1,0 +1,7 @@
+{
+  "BASE_URL": "http://192.168.1.104:3000", 
+  "USE_CACHE": true,
+  "GOOGLE_MAPS_API_KEY": "AIzaSyCxQr4W8lJGvuV8tgOWK93pW93rbBI2IZI",
+  "DATABASE_URL": "postgresql://travel_user:password@localhost:5432/travel_guide"
+
+}
