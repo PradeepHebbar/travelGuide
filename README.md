@@ -31,7 +31,7 @@ This guide walks you through setting up and running the project on a new machine
 ## 📥 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-username>/travel-guide-app.git
+git clone https://github.com/PradeepHebbar/travelguide.git
 cd travel-guide-app
 ```
 
