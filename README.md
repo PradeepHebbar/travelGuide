@@ -73,7 +73,7 @@ cd travel-guide-app
 ## ⚙️ 3. Backend Setup
 
 ```bash
-cd backend
+inside travel-guide-app
 npm install
 ```
 
